@@ -1,0 +1,26 @@
+{
+  "name": "@protocoll/wasm",
+  "version": "0.1.0",
+  "description": "TypeScript/WASM bindings for the protocoll state streaming library",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "wasm/"
+  ],
+  "scripts": {
+    "build:wasm": "mkdir -p build && cd build && emcmake cmake .. && emmake make -j",
+    "build:ts": "tsc",
+    "build": "npm run build:wasm && npm run build:ts",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest"
+  },
+  "devDependencies": {
+    "typescript": "^5.0",
+    "@types/node": "^20",
+    "jest": "^29",
+    "@jest/globals": "^29",
+    "ts-jest": "^29"
+  },
+  "license": "MIT"
+}

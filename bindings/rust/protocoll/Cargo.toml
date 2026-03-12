@@ -1,0 +1,11 @@
+[package]
+name = "protocoll"
+version = "0.1.0"
+edition = "2021"
+description = "Safe Rust bindings for the protocoll state streaming library"
+license = "MIT"
+
+[dependencies]
+protocoll-sys = { path = "../protocoll-sys" }
+
+[dev-dependencies]

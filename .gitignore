@@ -1,0 +1,52 @@
+# Build artifacts
+build/
+out/
+cmake-build-*/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.sln.docstates
+
+# Compiled objects
+*.o
+*.obj
+*.lib
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+
+# Rust
+bindings/rust/target/
+bindings/rust/Cargo.lock
+
+# Python
+bindings/python/__pycache__/
+bindings/python/*.egg-info/
+bindings/python/dist/
+bindings/python/build/
+*.pyc
+
+# Node / WASM
+bindings/wasm/node_modules/
+bindings/wasm/dist/
+bindings/wasm/*.js
+bindings/wasm/*.wasm
+!bindings/wasm/src/**
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Package managers
+*.lock
+!bindings/wasm/package-lock.json

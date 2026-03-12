@@ -1,0 +1,15 @@
+[package]
+name = "protocoll-sys"
+version = "0.1.0"
+edition = "2021"
+description = "Raw FFI bindings for the protocoll C library"
+license = "MIT"
+links = "protocoll"
+
+[build-dependencies]
+cmake = "0.1"
+
+# Optional: regenerate bindings from header (requires libclang)
+# [build-dependencies.bindgen]
+# version = "0.71"
+# optional = true
