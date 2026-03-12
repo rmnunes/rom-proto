@@ -1,0 +1,150 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  packages: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  # ── Build + test C++ (gate for everything) ────────────────
+  test:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            cmake_args: ""
+          - os: ubuntu-latest
+            cmake_args: ""
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
+      - run: cmake --build build --config Release --parallel
+      - run: ctest --test-dir build --build-config Release --output-on-failure
+        timeout-minutes: 5
+
+  # ── Semantic Release (version + tag + GitHub Release) ─────
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      new_release: ${{ steps.semantic.outputs.new_release_published }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+      tag: ${{ steps.semantic.outputs.new_release_git_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install semantic-release
+        run: npm install -g semantic-release @semantic-release/exec @semantic-release/git
+
+      - name: Run semantic-release
+        id: semantic
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Build & attach C++ artifacts to GitHub Release ────────
+  upload-artifacts:
+    name: Upload Release Artifacts
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.outputs.new_release == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build C++ library
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+          cmake --build build --config Release --parallel
+          cmake --install build --prefix staging/rom
+
+      - name: Package C++ tarball
+        run: |
+          tar czf rom-v${{ needs.release.outputs.version }}-linux-x64.tar.gz -C staging rom
+
+      - name: Build Python sdist
+        run: |
+          pip install build cffi
+          cd bindings/python && python -m build --sdist
+          cp dist/*.tar.gz ../../rom-python-v${{ needs.release.outputs.version }}.tar.gz
+
+      - name: Generate checksums
+        run: |
+          sha256sum rom-v${{ needs.release.outputs.version }}-linux-x64.tar.gz \
+                    rom-python-v${{ needs.release.outputs.version }}.tar.gz > checksums.txt
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release.outputs.tag }}
+          files: |
+            rom-v${{ needs.release.outputs.version }}-linux-x64.tar.gz
+            rom-python-v${{ needs.release.outputs.version }}.tar.gz
+            checksums.txt
+
+  # ── Publish npm to GitHub Packages (private) ──────────────
+  publish-npm:
+    name: Publish npm (@rmnunes/rom)
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.outputs.new_release == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@rmnunes"
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: "3.1.51"
+
+      - name: Build WASM module
+        run: |
+          emcmake cmake -B build-wasm -S bindings/wasm \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-wasm --config Release
+
+      - name: Copy WASM artifacts
+        working-directory: bindings/wasm
+        run: |
+          cp ../../build-wasm/rom_wasm.js dist/ 2>/dev/null || true
+          cp ../../build-wasm/rom_wasm.wasm dist/ 2>/dev/null || true
+
+      - name: Compile TypeScript
+        working-directory: bindings/wasm
+        run: |
+          npm install
+          npx tsc
+
+      - name: Publish to GitHub Packages
+        working-directory: bindings/wasm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

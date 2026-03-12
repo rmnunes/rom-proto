@@ -1,9 +1,10 @@
 [package]
-name = "rom-sys"
+name = "rmnunes-rom-sys"
 version = "0.1.0"
 edition = "2021"
-description = "Raw FFI bindings for the protocoll C library"
+description = "Raw FFI bindings for the ROM (Replicated Object Memory) C library"
 license = "MIT"
+repository = "https://github.com/rmnunes/rom"
 links = "protocoll"
 
 [build-dependencies]

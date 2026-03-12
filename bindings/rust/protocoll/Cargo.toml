@@ -1,11 +1,12 @@
 [package]
-name = "rom"
+name = "rmnunes-rom"
 version = "0.1.0"
 edition = "2021"
-description = "Safe Rust bindings for the rom state streaming library"
+description = "Safe Rust bindings for ROM (Replicated Object Memory) — CRDT state streaming with adaptive routing"
 license = "MIT"
+repository = "https://github.com/rmnunes/rom"
 
 [dependencies]
-rom-sys = { path = "../protocoll-sys" }
+rmnunes-rom-sys = { path = "../protocoll-sys" }
 
 [dev-dependencies]

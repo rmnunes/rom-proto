@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "cffi>=1.16"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "rom"
+name = "rmnunes-rom"
 version = "0.1.0"
-description = "Python bindings for the rom state streaming library"
+description = "Python bindings for ROM (Replicated Object Memory) — CRDT state streaming with adaptive routing"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 dependencies = ["cffi>=1.16"]

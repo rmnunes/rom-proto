@@ -1,14 +1,35 @@
 {
-  "name": "@rom/wasm",
+  "name": "@rmnunes/rom",
   "version": "0.1.0",
-  "description": "TypeScript/WASM bindings for the protocoll state streaming library",
+  "description": "ROM SDK — Replicated Object Memory for TypeScript/WASM. Stream CRDT state across peers with adaptive routing and multi-resolution propagation.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "files": [
     "dist/",
     "wasm/"
   ],
+  "keywords": [
+    "crdt",
+    "state-replication",
+    "mesh-networking",
+    "peer-to-peer",
+    "wasm",
+    "real-time",
+    "hebbian-routing",
+    "conflict-free"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rmnunes/rom",
+    "directory": "bindings/wasm"
+  },
   "scripts": {
     "build:wasm": "mkdir -p build && cd build && emcmake cmake .. && emmake make -j",
     "build:ts": "tsc",
