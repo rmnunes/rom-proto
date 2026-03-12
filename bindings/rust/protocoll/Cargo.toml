@@ -1,6 +1,6 @@
 [package]
 name = "rmnunes-rom"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "Safe Rust bindings for ROM (Replicated Object Memory) — CRDT state streaming with adaptive routing"
 license = "MIT"
