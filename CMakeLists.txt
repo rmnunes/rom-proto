@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(protocoll VERSION 0.1.0 LANGUAGES C CXX)
+project(rom VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -67,7 +67,7 @@ if(PROTOCOLL_ENABLE_DTLS)
 endif()
 
 # Library
-add_library(protocoll
+add_library(rom
     src/wire/packet.cpp
     src/wire/frame.cpp
     src/wire/codec.cpp
@@ -109,19 +109,19 @@ add_library(protocoll
     src/util/clock.cpp
 )
 
-target_include_directories(protocoll PUBLIC
+target_include_directories(rom PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${xxhash_SOURCE_DIR}
 )
 
-target_compile_features(protocoll PUBLIC cxx_std_20)
-protocoll_set_warnings(protocoll)
+target_compile_features(rom PUBLIC cxx_std_20)
+protocoll_set_warnings(rom)
 
-target_link_libraries(protocoll PUBLIC monocypher_lib)
+target_link_libraries(rom PUBLIC monocypher_lib)
 
 if(PROTOCOLL_ENABLE_DTLS)
-    target_compile_definitions(protocoll PUBLIC PROTOCOLL_ENABLE_DTLS)
-    target_link_libraries(protocoll PUBLIC
+    target_compile_definitions(rom PUBLIC PROTOCOLL_ENABLE_DTLS)
+    target_link_libraries(rom PUBLIC
         MbedTLS::mbedtls MbedTLS::mbedx509 MbedTLS::mbedcrypto)
 endif()
 
@@ -134,8 +134,8 @@ if(PROTOCOLL_ENABLE_IOURING)
         GIT_TAG liburing-2.5
     )
     FetchContent_MakeAvailable(liburing)
-    target_compile_definitions(protocoll PUBLIC PROTOCOLL_ENABLE_IOURING)
-    target_link_libraries(protocoll PUBLIC uring)
+    target_compile_definitions(rom PUBLIC PROTOCOLL_ENABLE_IOURING)
+    target_link_libraries(rom PUBLIC uring)
 endif()
 
 # Optional: DPDK kernel-bypass transport (Linux only)
@@ -143,17 +143,17 @@ option(PROTOCOLL_ENABLE_DPDK "Enable DPDK kernel-bypass transport (Linux only)" 
 if(PROTOCOLL_ENABLE_DPDK)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(DPDK REQUIRED libdpdk)
-    target_compile_definitions(protocoll PUBLIC PROTOCOLL_ENABLE_DPDK)
-    target_include_directories(protocoll PUBLIC ${DPDK_INCLUDE_DIRS})
-    target_link_libraries(protocoll PUBLIC ${DPDK_LIBRARIES})
+    target_compile_definitions(rom PUBLIC PROTOCOLL_ENABLE_DPDK)
+    target_include_directories(rom PUBLIC ${DPDK_INCLUDE_DIRS})
+    target_link_libraries(rom PUBLIC ${DPDK_LIBRARIES})
 endif()
 
 if(WIN32)
-    target_link_libraries(protocoll PUBLIC ws2_32 bcrypt)
+    target_link_libraries(rom PUBLIC ws2_32 bcrypt)
 endif()
 
 # Install targets (used by Rust/Python bindings via cmake crate)
-install(TARGETS protocoll monocypher_lib
+install(TARGETS rom monocypher_lib
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/protocoll
@@ -161,7 +161,7 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/protocoll
 
 # Tests
 enable_testing()
-add_executable(protocoll_tests
+add_executable(rom_tests
     tests/test_packet.cpp
     tests/test_frame.cpp
     tests/test_codec.cpp
@@ -199,17 +199,17 @@ add_executable(protocoll_tests
     tests/test_integration.cpp
     tests/test_main.cpp
 )
-target_link_libraries(protocoll_tests PRIVATE protocoll GTest::gtest)
-target_include_directories(protocoll_tests PRIVATE ${xxhash_SOURCE_DIR})
-add_test(NAME protocoll_tests COMMAND protocoll_tests)
+target_link_libraries(rom_tests PRIVATE rom GTest::gtest)
+target_include_directories(rom_tests PRIVATE ${xxhash_SOURCE_DIR})
+add_test(NAME rom_tests COMMAND rom_tests)
 
 # Example
 add_executable(state_streaming_demo examples/state_streaming_demo.cpp)
-target_link_libraries(state_streaming_demo PRIVATE protocoll)
+target_link_libraries(state_streaming_demo PRIVATE rom)
 
 # CLI Tools
-add_executable(protocoll_dump tools/protocoll_dump.cpp)
-target_link_libraries(protocoll_dump PRIVATE protocoll)
+add_executable(rom_dump tools/protocoll_dump.cpp)
+target_link_libraries(rom_dump PRIVATE rom)
 
-add_executable(protocoll_inspect tools/protocoll_inspect.cpp)
-target_link_libraries(protocoll_inspect PRIVATE protocoll)
+add_executable(rom_inspect tools/protocoll_inspect.cpp)
+target_link_libraries(rom_inspect PRIVATE rom)

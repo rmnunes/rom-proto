@@ -1,5 +1,5 @@
 [package]
-name = "protocoll-sys"
+name = "rom-sys"
 version = "0.1.0"
 edition = "2021"
 description = "Raw FFI bindings for the protocoll C library"

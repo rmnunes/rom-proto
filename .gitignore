@@ -35,8 +35,10 @@ bindings/python/dist/
 bindings/python/build/
 *.pyc
 
-# Node / WASM
-bindings/wasm/node_modules/
+# Node
+node_modules/
+
+# WASM
 bindings/wasm/dist/
 bindings/wasm/*.js
 bindings/wasm/*.wasm

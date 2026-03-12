@@ -1,5 +1,5 @@
 {
-  "name": "@protocoll/wasm",
+  "name": "@rom/wasm",
   "version": "0.1.0",
   "description": "TypeScript/WASM bindings for the protocoll state streaming library",
   "type": "module",

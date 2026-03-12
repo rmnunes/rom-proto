@@ -1,5 +1,5 @@
 {
-  "name": "protocoll-solidjs-demo",
+  "name": "rom-solidjs-demo",
   "version": "0.1.0",
   "description": "SolidJS + protocoll: reactive CRDT state streaming demo",
   "type": "module",
