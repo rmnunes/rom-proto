@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rmnunes-rom"
-version = "1.0.1"
+version = "1.0.2"
 description = "Python bindings for ROM (Replicated Object Memory) — CRDT state streaming with adaptive routing"
 requires-python = ">=3.9"
 license = {text = "MIT"}
