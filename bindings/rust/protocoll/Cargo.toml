@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Safe Rust bindings for ROM (Replicated Object Memory) — CRDT state streaming with adaptive routing"
 license = "MIT"
-repository = "https://github.com/rmnunes/rom"
+repository = "https://github.com/rmnunes/rom-proto"
 
 [dependencies]
 rmnunes-rom-sys = { path = "../protocoll-sys" }
