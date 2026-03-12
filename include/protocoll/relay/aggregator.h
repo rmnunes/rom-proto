@@ -12,8 +12,9 @@
 //   agg.ingest(path_hash, CrdtType::LWW_REGISTER, delta_data, len);
 //   agg.flush();  // or flush_if_ready(max_batch_size, max_age_us)
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
+#include <memory>
 #include <vector>
 #include <unordered_map>
 #include <functional>

@@ -25,7 +25,7 @@ jobs:
             cmake_args: -DCMAKE_C_COMPILER=gcc-12 -DCMAKE_CXX_COMPILER=g++-12
           - os: ubuntu-latest
             compiler: clang
-            cmake_args: -DCMAKE_C_COMPILER=clang-14 -DCMAKE_CXX_COMPILER=clang++-14
+            cmake_args: -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
 
     name: C++ (${{ matrix.compiler }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}

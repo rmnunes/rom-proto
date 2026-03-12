@@ -1,4 +1,5 @@
 #include "protocoll/relay/aggregator.h"
+#include <memory>
 #include "protocoll/state/crdt/lww_register.h"
 #include "protocoll/state/crdt/g_counter.h"
 #include "protocoll/state/crdt/pn_counter.h"

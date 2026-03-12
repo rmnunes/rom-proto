@@ -9,6 +9,7 @@
 // The sender stamps deltas with creation_time + deadline.
 // The receiver (or sender's outbox) checks: is this delta still fresh?
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 #include <unordered_map>

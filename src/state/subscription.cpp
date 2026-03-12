@@ -105,7 +105,7 @@ bool SubscribeFramePayload::decode(const uint8_t* buf, size_t buf_len) {
     freshness_us = read_u32(buf + 8);
     tier = static_cast<ResolutionTier>(buf[12]);
     uint16_t pat_len = read_u16(buf + 13);
-    if (buf_len < 15 + pat_len) return false;
+    if (buf_len < static_cast<size_t>(15 + pat_len)) return false;
     pattern.assign(reinterpret_cast<const char*>(buf + 15), pat_len);
     return true;
 }

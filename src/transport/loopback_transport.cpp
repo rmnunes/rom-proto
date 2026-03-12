@@ -1,6 +1,7 @@
 #include "protocoll/transport/loopback_transport.h"
 #include <algorithm>
 #include <chrono>
+#include <cstring>
 
 namespace protocoll {
 
