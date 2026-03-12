@@ -45,13 +45,15 @@ else()
     target_compile_options(monocypher_lib PRIVATE -w)
 endif()
 
-FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.14.0
-)
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
+if(NOT EMSCRIPTEN)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.14.0
+    )
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+endif()
 
 # Optional: DTLS transport encryption (requires mbedTLS)
 option(PROTOCOLL_ENABLE_DTLS "Enable DTLS transport encryption via mbedTLS" OFF)
@@ -66,13 +68,12 @@ if(PROTOCOLL_ENABLE_DTLS)
     FetchContent_MakeAvailable(mbedtls)
 endif()
 
-# Library
-add_library(rom
+# Library — core sources (all platforms including WASM)
+set(ROM_CORE_SOURCES
     src/wire/packet.cpp
     src/wire/frame.cpp
     src/wire/codec.cpp
     src/transport/loopback_transport.cpp
-    src/transport/udp_transport.cpp
     src/connection/connection.cpp
     src/connection/handshake.cpp
     src/reliability/ack_tracker.cpp
@@ -91,16 +92,11 @@ add_library(rom
     src/connection/recovery.cpp
     src/reliability/congestion.cpp
     src/reliability/fec.cpp
-    src/transport/async_transport.cpp
-    src/transport/dtls_transport.cpp
-    src/transport/iocp_transport.cpp
     src/routing/route_table.cpp
     src/routing/router.cpp
     src/connection/connection_manager.cpp
     src/relay/aggregator.cpp
     src/relay/relay_node.cpp
-    src/transport/dpdk_transport.cpp
-    src/transport/iouring_transport.cpp
     src/security/crypto.cpp
     src/security/capability.cpp
     src/peer.cpp
@@ -108,6 +104,21 @@ add_library(rom
     src/util/hash.cpp
     src/util/clock.cpp
 )
+
+# Platform-specific sources (excluded from WASM)
+set(ROM_PLATFORM_SOURCES "")
+if(NOT EMSCRIPTEN)
+    list(APPEND ROM_PLATFORM_SOURCES
+        src/transport/udp_transport.cpp
+        src/transport/async_transport.cpp
+        src/transport/dtls_transport.cpp
+        src/transport/iocp_transport.cpp
+        src/transport/dpdk_transport.cpp
+        src/transport/iouring_transport.cpp
+    )
+endif()
+
+add_library(rom ${ROM_CORE_SOURCES} ${ROM_PLATFORM_SOURCES})
 
 target_include_directories(rom PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -159,57 +170,59 @@ install(TARGETS rom monocypher_lib
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/protocoll
     DESTINATION include)
 
-# Tests
-enable_testing()
-add_executable(rom_tests
-    tests/test_packet.cpp
-    tests/test_frame.cpp
-    tests/test_codec.cpp
-    tests/test_connection.cpp
-    tests/test_handshake.cpp
-    tests/test_loopback_transport.cpp
-    tests/test_ack_tracker.cpp
-    tests/test_state_path.cpp
-    tests/test_version_vector.cpp
-    tests/test_lww_register.cpp
-    tests/test_g_counter.cpp
-    tests/test_pn_counter.cpp
-    tests/test_or_set.cpp
-    tests/test_subscription.cpp
-    tests/test_freshness.cpp
-    tests/test_event_log.cpp
-    tests/test_recovery.cpp
-    tests/test_congestion.cpp
-    tests/test_fec.cpp
-    tests/test_async_transport.cpp
-    tests/test_crypto.cpp
-    tests/test_capability.cpp
-    tests/test_observer.cpp
-    tests/test_c_api.cpp
-    tests/test_cli_decode.cpp
-    tests/test_dtls_transport.cpp
-    tests/test_resolution.cpp
-    tests/test_iocp_transport.cpp
-    tests/test_router.cpp
-    tests/test_relay_node.cpp
-    tests/test_dpdk_transport.cpp
-    tests/test_connection_manager.cpp
-    tests/test_peer_multi_conn.cpp
-    tests/test_mesh_topology.cpp
-    tests/test_integration.cpp
-    tests/test_main.cpp
-)
-target_link_libraries(rom_tests PRIVATE rom GTest::gtest)
-target_include_directories(rom_tests PRIVATE ${xxhash_SOURCE_DIR})
-add_test(NAME rom_tests COMMAND rom_tests)
+# Tests, examples, and CLI tools (not for WASM builds)
+if(NOT EMSCRIPTEN)
+    enable_testing()
+    add_executable(rom_tests
+        tests/test_packet.cpp
+        tests/test_frame.cpp
+        tests/test_codec.cpp
+        tests/test_connection.cpp
+        tests/test_handshake.cpp
+        tests/test_loopback_transport.cpp
+        tests/test_ack_tracker.cpp
+        tests/test_state_path.cpp
+        tests/test_version_vector.cpp
+        tests/test_lww_register.cpp
+        tests/test_g_counter.cpp
+        tests/test_pn_counter.cpp
+        tests/test_or_set.cpp
+        tests/test_subscription.cpp
+        tests/test_freshness.cpp
+        tests/test_event_log.cpp
+        tests/test_recovery.cpp
+        tests/test_congestion.cpp
+        tests/test_fec.cpp
+        tests/test_async_transport.cpp
+        tests/test_crypto.cpp
+        tests/test_capability.cpp
+        tests/test_observer.cpp
+        tests/test_c_api.cpp
+        tests/test_cli_decode.cpp
+        tests/test_dtls_transport.cpp
+        tests/test_resolution.cpp
+        tests/test_iocp_transport.cpp
+        tests/test_router.cpp
+        tests/test_relay_node.cpp
+        tests/test_dpdk_transport.cpp
+        tests/test_connection_manager.cpp
+        tests/test_peer_multi_conn.cpp
+        tests/test_mesh_topology.cpp
+        tests/test_integration.cpp
+        tests/test_main.cpp
+    )
+    target_link_libraries(rom_tests PRIVATE rom GTest::gtest)
+    target_include_directories(rom_tests PRIVATE ${xxhash_SOURCE_DIR})
+    add_test(NAME rom_tests COMMAND rom_tests)
 
-# Example
-add_executable(state_streaming_demo examples/state_streaming_demo.cpp)
-target_link_libraries(state_streaming_demo PRIVATE rom)
+    # Example
+    add_executable(state_streaming_demo examples/state_streaming_demo.cpp)
+    target_link_libraries(state_streaming_demo PRIVATE rom)
 
-# CLI Tools
-add_executable(rom_dump tools/protocoll_dump.cpp)
-target_link_libraries(rom_dump PRIVATE rom)
+    # CLI Tools
+    add_executable(rom_dump tools/protocoll_dump.cpp)
+    target_link_libraries(rom_dump PRIVATE rom)
 
-add_executable(rom_inspect tools/protocoll_inspect.cpp)
-target_link_libraries(rom_inspect PRIVATE rom)
+    add_executable(rom_inspect tools/protocoll_inspect.cpp)
+    target_link_libraries(rom_inspect PRIVATE rom)
+endif()

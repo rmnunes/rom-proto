@@ -1,6 +1,9 @@
 # Platform detection and configuration
 
-if(WIN32)
+if(EMSCRIPTEN)
+    add_compile_definitions(PROTOCOLL_PLATFORM_WASM)
+    set(PROTOCOLL_PLATFORM_LIBS "")
+elseif(WIN32)
     add_compile_definitions(PROTOCOLL_PLATFORM_WINDOWS)
     # Winsock2 for UDP transport
     set(PROTOCOLL_PLATFORM_LIBS ws2_32)
