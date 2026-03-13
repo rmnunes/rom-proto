@@ -1,6 +1,6 @@
 {
   "name": "@rmnunes/rom",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "ROM SDK — Replicated Object Memory for TypeScript/WASM. Stream CRDT state across peers with adaptive routing and multi-resolution propagation.",
   "type": "module",
   "main": "dist/index.js",
