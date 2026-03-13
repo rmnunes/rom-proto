@@ -4,8 +4,10 @@
 #include "protocoll/transport/transport.h"
 #include "protocoll/transport/loopback_transport.h"
 #include "protocoll/transport/external_transport.h"
+#ifndef __EMSCRIPTEN__
 #include "protocoll/transport/udp_transport.h"
 #include "protocoll/transport/dtls_transport.h"
+#endif
 #include "protocoll/state/crdt/lww_register.h"
 #include "protocoll/state/crdt/g_counter.h"
 #include "protocoll/state/state_path.h"
@@ -92,11 +94,17 @@ PcolTransport* pcol_transport_loopback_create(uint32_t bus_id) {
     return t;
 }
 
+#ifndef __EMSCRIPTEN__
 PcolTransport* pcol_transport_udp_create(void) {
     auto* t = new PcolTransport();
     t->impl = std::make_unique<UdpTransport>();
     return t;
 }
+#else
+PcolTransport* pcol_transport_udp_create(void) {
+    return nullptr; // UDP not available in WASM
+}
+#endif
 
 PcolError pcol_transport_bind(PcolTransport* t, PcolEndpoint ep) {
     if (!t || !t->impl) return PCOL_ERR_INVALID;
@@ -161,6 +169,7 @@ size_t pcol_transport_external_send_queue_size(PcolTransport* t) {
 
 // --- DTLS Transport ---
 
+#ifndef __EMSCRIPTEN__
 PcolTransport* pcol_transport_dtls_create(PcolTransport* inner,
                                             const PcolDtlsConfig* config) {
     if (!inner || !inner->impl || !config) return nullptr;
@@ -188,6 +197,15 @@ PcolError pcol_transport_dtls_handshake(PcolTransport* t, PcolEndpoint remote,
 
     return dtls->handshake(to_ep(remote), timeout_ms) ? PCOL_OK : PCOL_ERR_TIMEOUT;
 }
+#else
+PcolTransport* pcol_transport_dtls_create(PcolTransport*, const PcolDtlsConfig*) {
+    return nullptr; // DTLS not available in WASM
+}
+
+PcolError pcol_transport_dtls_handshake(PcolTransport*, PcolEndpoint, int) {
+    return PCOL_ERR_INVALID; // DTLS not available in WASM
+}
+#endif
 
 // --- Peer ---
 
