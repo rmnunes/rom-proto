@@ -9,3 +9,4 @@
 
 ## Feedback
 - [feedback_transport_decisions.md](feedback_transport_decisions.md) - WebTransport default, WebSocket fallback, no WebRTC
+- [feedback_no_coauthor.md](feedback_no_coauthor.md) - No Co-Authored-By lines in commit messages
