@@ -46,6 +46,10 @@ export interface ProtocollModule {
   // Transport
   _pcol_transport_loopback_create(bus_id: number): number;
   _pcol_transport_udp_create(): number;
+  _pcol_transport_external_create(): number;
+  _pcol_transport_external_push_recv(t: number, data: number, len: number, from_addr: number, from_port: number): number;
+  _pcol_transport_external_pop_send(t: number, buf: number, buf_len: number, out_len: number, to_addr_buf: number, to_addr_buf_len: number, to_port: number): number;
+  _pcol_transport_external_send_queue_size(t: number): number;
   _pcol_transport_bind(t: number, ep_addr: number, ep_port: number): number;
   _pcol_transport_destroy(t: number): void;
 
@@ -64,6 +68,12 @@ export interface ProtocollModule {
   _pcol_peer_is_connected(peer: number): number;
   _pcol_peer_disconnect(peer: number): void;
   _pcol_peer_set_local_endpoint(peer: number, addr: number, port: number): void;
+
+  // Non-blocking connection (for browser)
+  _pcol_peer_connect_start(peer: number, addr: number, port: number): number;
+  _pcol_peer_connect_poll(peer: number): number;
+  _pcol_peer_accept_start(peer: number): number;
+  _pcol_peer_accept_poll(peer: number): number;
 
   // Multi-connection
   _pcol_peer_connect_to(peer: number, node_id: number, addr: number, port: number): number;

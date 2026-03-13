@@ -18,20 +18,26 @@ type: project
 - Adaptive Hebbian routing + ConnectionManager for mesh topologies
 - CLI tools (rom_dump, rom_inspect)
 
+## Phase 17: Browser Transports (completed 2026-03-12)
+- ExternalTransport (C++ queue-based transport bridging JS ↔ WASM)
+- Non-blocking handshake (connect_start/poll, accept_start/poll for single-threaded WASM)
+- BrowserTransport base class (TypeScript, drains send queue, pushes recv)
+- WebTransportTransport (default/recommended — QUIC unreliable datagrams)
+- WebSocketTransport (compatibility fallback — logs console warning recommending WebTransport)
+- Async connect/accept + startPolling/stopPolling convenience on Peer class
+
 ## Test Suite
-366 tests across 74 test suites, all passing (Windows MSVC, Linux GCC/Clang).
+388 tests across 78 test suites, all passing (Windows MSVC, Linux GCC/Clang).
 
 ## Language Bindings
 - **Rust:** `rmnunes-rom` + `rmnunes-rom-sys` (crates.io naming, git dependency for private use)
 - **Python:** `rmnunes-rom` (cffi-based, context managers)
 - **TypeScript/WASM:** `@rmnunes/rom` (Emscripten, GitHub Packages private)
+  - Browser transports: WebTransportTransport (default), WebSocketTransport (fallback)
 - **SolidJS:** `useProtocoll` hook demo (each CRDT path → SolidJS signal)
 
 ## CI/CD
-- GitHub Actions: ci.yml (build+test matrix), release.yml (semantic-release)
+- GitHub Actions: ci.yml (build+test matrix + semantic-release + publish)
 - Semantic versioning from conventional commits (fix→patch, feat→minor, feat!→major)
 - npm publishes to GitHub Packages (private @rmnunes scope)
 - Python/C++ artifacts attached to GitHub Releases
-
-## Remaining Plan (Phases 7-16)
-See plan file for: CLI tools, DTLS encryption, io_uring/IOCP native async, DPDK kernel bypass, in-transit computation/relay, full WASM binding completion.

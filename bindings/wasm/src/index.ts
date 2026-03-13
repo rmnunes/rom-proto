@@ -17,9 +17,14 @@
  */
 
 export { CrdtType, Reliability, ErrorCode, ResolutionTier } from './types.js';
-export type { Endpoint } from './types.js';
+export type { Endpoint, ProtocollModule } from './types.js';
 import type { ProtocollModule, Endpoint } from './types.js';
 import { CrdtType, Reliability, ErrorCode, ResolutionTier } from './types.js';
+
+// Browser transport adapters
+export { BrowserTransport } from './transports/browser-transport.js';
+export { WebTransportTransport } from './transports/webtransport-transport.js';
+export { WebSocketTransport } from './transports/websocket-transport.js';
 
 /** Custom error class for protocoll errors. */
 export class ProtocollError extends Error {
@@ -141,6 +146,100 @@ export class Peer {
   /** Disconnect from the remote peer. */
   disconnect(): void {
     this._mod._pcol_peer_disconnect(this._ptr);
+  }
+
+  // --- Non-blocking connection (for browser transports) ---
+
+  /** Start a connection handshake (non-blocking). Use with connectPoll() or connectAsync(). */
+  connectStart(address: string, port: number): void {
+    const addrPtr = this._mod.allocateUTF8(address);
+    const code = this._mod._pcol_peer_connect_start(this._ptr, addrPtr, port);
+    this._mod._free(addrPtr);
+    checkError(code);
+  }
+
+  /** Poll for connection completion. Returns true when connected. */
+  connectPoll(): boolean {
+    return this._mod._pcol_peer_connect_poll(this._ptr) === 0;
+  }
+
+  /** Start accepting connections (non-blocking). Use with acceptPoll() or acceptAsync(). */
+  acceptStart(): void {
+    const code = this._mod._pcol_peer_accept_start(this._ptr);
+    checkError(code);
+  }
+
+  /** Poll for accept completion. Returns true when connected. */
+  acceptPoll(): boolean {
+    return this._mod._pcol_peer_accept_poll(this._ptr) === 0;
+  }
+
+  /**
+   * Async connect — returns a promise that resolves when connected.
+   * If a BrowserTransport is used, it drains the send queue automatically.
+   */
+  async connectAsync(address: string, port: number, browserTransport?: { drainSendQueue(): void }, timeoutMs = 10000): Promise<void> {
+    this.connectStart(address, port);
+    browserTransport?.drainSendQueue();
+
+    const start = Date.now();
+    return new Promise<void>((resolve, reject) => {
+      const check = (): void => {
+        browserTransport?.drainSendQueue();
+        if (this.connectPoll()) {
+          resolve();
+        } else if (Date.now() - start > timeoutMs) {
+          reject(new ProtocollError(ErrorCode.TIMEOUT, 'connectAsync timed out'));
+        } else {
+          setTimeout(check, 16);
+        }
+      };
+      check();
+    });
+  }
+
+  /**
+   * Async accept — returns a promise that resolves when a connection is accepted.
+   */
+  async acceptAsync(browserTransport?: { drainSendQueue(): void }, timeoutMs = 10000): Promise<void> {
+    this.acceptStart();
+
+    const start = Date.now();
+    return new Promise<void>((resolve, reject) => {
+      const check = (): void => {
+        browserTransport?.drainSendQueue();
+        if (this.acceptPoll()) {
+          resolve();
+        } else if (Date.now() - start > timeoutMs) {
+          reject(new ProtocollError(ErrorCode.TIMEOUT, 'acceptAsync timed out'));
+        } else {
+          setTimeout(check, 16);
+        }
+      };
+      check();
+    });
+  }
+
+  // --- Polling convenience ---
+
+  private _pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** Start a poll loop that calls flush() and poll(0) at the given interval. */
+  startPolling(intervalMs = 16, browserTransport?: { drainSendQueue(): void }): void {
+    this.stopPolling();
+    this._pollTimer = setInterval(() => {
+      browserTransport?.drainSendQueue();
+      this.flush();
+      this.poll(0);
+    }, intervalMs);
+  }
+
+  /** Stop the poll loop. */
+  stopPolling(): void {
+    if (this._pollTimer !== null) {
+      clearInterval(this._pollTimer);
+      this._pollTimer = null;
+    }
   }
 
   /** Declare a state region. */
@@ -334,6 +433,16 @@ export class Protocoll {
     if (ptr === 0) throw new ProtocollError(ErrorCode.INTERNAL, "Failed to create UDP transport");
     return new Transport(this._mod, ptr);
   }
+
+  /** Create an external transport for browser bridging (WebSocket/WebTransport). */
+  createExternalTransport(): Transport {
+    const ptr = this._mod._pcol_transport_external_create();
+    if (ptr === 0) throw new ProtocollError(ErrorCode.INTERNAL, "Failed to create external transport");
+    return new Transport(this._mod, ptr);
+  }
+
+  /** @internal Get the raw WASM module (for BrowserTransport adapters). */
+  get module(): ProtocollModule { return this._mod; }
 
   /** Get the packed API version (major<<16 | minor<<8 | patch). */
   apiVersion(): number {

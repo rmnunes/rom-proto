@@ -3,6 +3,7 @@
 #include "protocoll/security/crypto.h"
 #include "protocoll/transport/transport.h"
 #include "protocoll/transport/loopback_transport.h"
+#include "protocoll/transport/external_transport.h"
 #include "protocoll/transport/udp_transport.h"
 #include "protocoll/transport/dtls_transport.h"
 #include "protocoll/state/crdt/lww_register.h"
@@ -106,6 +107,58 @@ void pcol_transport_destroy(PcolTransport* t) {
     delete t;
 }
 
+// --- External Transport ---
+
+PcolTransport* pcol_transport_external_create(void) {
+    auto* t = new PcolTransport();
+    t->impl = std::make_unique<ExternalTransport>();
+    return t;
+}
+
+PcolError pcol_transport_external_push_recv(PcolTransport* t, const uint8_t* data,
+                                              size_t len, const char* from_addr,
+                                              uint16_t from_port) {
+    if (!t || !t->impl || !data || len == 0) return PCOL_ERR_INVALID;
+    auto* ext = dynamic_cast<ExternalTransport*>(t->impl.get());
+    if (!ext) return PCOL_ERR_INVALID;
+    Endpoint from{from_addr ? from_addr : "", from_port};
+    ext->push_recv(data, len, from);
+    return PCOL_OK;
+}
+
+PcolError pcol_transport_external_pop_send(PcolTransport* t, uint8_t* buf,
+                                             size_t buf_len, size_t* out_len,
+                                             char* to_addr_buf, size_t to_addr_buf_len,
+                                             uint16_t* to_port) {
+    if (!t || !t->impl || !buf || !out_len) return PCOL_ERR_INVALID;
+    auto* ext = dynamic_cast<ExternalTransport*>(t->impl.get());
+    if (!ext) return PCOL_ERR_INVALID;
+
+    ExternalTransport::Packet pkt;
+    if (!ext->pop_send(pkt)) return PCOL_ERR_NOT_FOUND;
+
+    size_t copy_len = pkt.data.size() < buf_len ? pkt.data.size() : buf_len;
+    std::memcpy(buf, pkt.data.data(), copy_len);
+    *out_len = pkt.data.size();
+
+    if (to_addr_buf && to_addr_buf_len > 0) {
+        size_t addr_len = pkt.endpoint.address.size();
+        size_t addr_copy = addr_len < (to_addr_buf_len - 1) ? addr_len : (to_addr_buf_len - 1);
+        std::memcpy(to_addr_buf, pkt.endpoint.address.c_str(), addr_copy);
+        to_addr_buf[addr_copy] = '\0';
+    }
+    if (to_port) *to_port = pkt.endpoint.port;
+
+    return PCOL_OK;
+}
+
+size_t pcol_transport_external_send_queue_size(PcolTransport* t) {
+    if (!t || !t->impl) return 0;
+    auto* ext = dynamic_cast<ExternalTransport*>(t->impl.get());
+    if (!ext) return 0;
+    return ext->send_queue_size();
+}
+
 // --- DTLS Transport ---
 
 PcolTransport* pcol_transport_dtls_create(PcolTransport* inner,
@@ -193,6 +246,28 @@ void pcol_peer_disconnect(PcolPeer* peer) {
 
 void pcol_peer_set_local_endpoint(PcolPeer* peer, PcolEndpoint ep) {
     if (peer) peer->impl->set_local_endpoint(to_ep(ep));
+}
+
+// --- Non-blocking connection ---
+
+PcolError pcol_peer_connect_start(PcolPeer* peer, PcolEndpoint remote) {
+    if (!peer) return PCOL_ERR_INVALID;
+    return peer->impl->connect_start(to_ep(remote)) ? PCOL_OK : PCOL_ERR_INVALID;
+}
+
+PcolError pcol_peer_connect_poll(PcolPeer* peer) {
+    if (!peer) return PCOL_ERR_INVALID;
+    return peer->impl->connect_poll() ? PCOL_OK : PCOL_ERR_TIMEOUT;
+}
+
+PcolError pcol_peer_accept_start(PcolPeer* peer) {
+    if (!peer) return PCOL_ERR_INVALID;
+    return peer->impl->accept_start() ? PCOL_OK : PCOL_ERR_INVALID;
+}
+
+PcolError pcol_peer_accept_poll(PcolPeer* peer) {
+    if (!peer) return PCOL_ERR_INVALID;
+    return peer->impl->accept_poll() ? PCOL_OK : PCOL_ERR_TIMEOUT;
 }
 
 // --- State declaration ---

@@ -5,6 +5,9 @@
  * Each CRDT state path becomes a SolidJS signal that updates automatically
  * when remote peers push changes.
  *
+ * Supports both loopback (in-browser testing) and network transports
+ * (WebTransport recommended, WebSocket fallback).
+ *
  * Usage:
  *   const { peer, lww, counter, flush } = useProtocoll(config);
  *   const [pos, setPos] = lww("/game/player/1/pos");
@@ -12,45 +15,21 @@
  */
 
 import { createSignal, onCleanup, type Accessor } from 'solid-js';
-
-// These types mirror the WASM bindings — in a real project, import from @protocoll/wasm
-interface Protocoll {
-  generateKeyPair(): { publicKey: Uint8Array; secretKey: Uint8Array };
-  createLoopbackTransport(busId?: number): Transport;
-  createPeer(nodeId: number, transport: Transport, keys: any): Peer;
-  apiVersion(): number;
-}
-
-interface Transport {
-  _ptr: number;
-  bind(address: string, port: number): void;
-  destroy(): void;
-}
-
-interface Peer {
-  readonly nodeId: number;
-  declare(path: string, crdtType: number, reliability?: number): void;
-  setLww(path: string, data: Uint8Array): void;
-  getLww(path: string): Uint8Array;
-  incrementCounter(path: string, amount?: number): void;
-  getCounter(path: string): number;
-  connect(address: string, port: number): void;
-  accept(address: string, port: number, timeoutMs?: number): void;
-  flush(): number;
-  poll(timeoutMs?: number): number;
-  registerPeerKey(remoteNodeId: number, publicKey: Uint8Array): void;
-  setLocalEndpoint(address: string, port: number): void;
-  destroy(): void;
-}
-
-// CRDT type constants (must match C enum)
-const LWW_REGISTER = 0;
-const G_COUNTER = 1;
+import type {
+  Protocoll,
+  Transport,
+  BrowserTransport,
+} from '@rmnunes/rom';
+import { CrdtType, Reliability } from '@rmnunes/rom';
 
 export interface ProtocollConfig {
   /** This peer's node ID */
   nodeId: number;
-  /** Loopback bus ID (for in-browser testing) */
+  /** Pre-initialized protocoll instance (from initProtocoll()) */
+  protocoll: Protocoll;
+  /** Transport mode. Default: 'loopback'. */
+  mode?: 'loopback' | 'network';
+  /** Loopback bus ID (for in-browser testing with mode='loopback') */
   busId?: number;
   /** Local bind address */
   address?: string;
@@ -58,8 +37,8 @@ export interface ProtocollConfig {
   port?: number;
   /** Poll interval in ms (default: 16 ~= 60fps) */
   pollIntervalMs?: number;
-  /** Pre-initialized protocoll instance (from initProtocoll()) */
-  protocoll: Protocoll;
+  /** Browser transport instance (for mode='network'). Created externally via WebTransportTransport or WebSocketTransport. */
+  browserTransport?: BrowserTransport;
 }
 
 type LwwHook = [
@@ -79,16 +58,25 @@ type CounterHook = [
 export function useProtocoll(config: ProtocollConfig) {
   const {
     nodeId,
+    mode = 'loopback',
     busId = 0,
-    address = 'loopback',
+    address = mode === 'loopback' ? 'loopback' : '0.0.0.0',
     port = nodeId,
     pollIntervalMs = 16,
     protocoll,
+    browserTransport,
   } = config;
 
   // Setup transport and peer
   const keys = protocoll.generateKeyPair();
-  const transport = protocoll.createLoopbackTransport(busId);
+  let transport: Transport;
+
+  if (mode === 'network' && browserTransport) {
+    transport = browserTransport.transport;
+  } else {
+    transport = protocoll.createLoopbackTransport(busId);
+  }
+
   transport.bind(address, port);
   const peer = protocoll.createPeer(nodeId, transport, keys);
 
@@ -99,6 +87,8 @@ export function useProtocoll(config: ProtocollConfig) {
   // Poll loop — reads incoming state and updates signals
   const pollTimer = setInterval(() => {
     try {
+      browserTransport?.drainSendQueue();
+      peer.flush();
       const changes = peer.poll(0);
       if (changes > 0) {
         // Refresh all tracked LWW signals
@@ -148,7 +138,7 @@ export function useProtocoll(config: ProtocollConfig) {
       }];
     }
 
-    peer.declare(path, LWW_REGISTER);
+    peer.declare(path, CrdtType.LWW_REGISTER, Reliability.RELIABLE);
     const [get, set] = createSignal('');
     lwwSignals.set(path, [get, set]);
 
@@ -178,7 +168,7 @@ export function useProtocoll(config: ProtocollConfig) {
       }];
     }
 
-    peer.declare(path, G_COUNTER);
+    peer.declare(path, CrdtType.G_COUNTER, Reliability.RELIABLE);
     const [get, set] = createSignal(0);
     counterSignals.set(path, [get, set]);
 

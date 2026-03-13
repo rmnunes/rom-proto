@@ -110,6 +110,32 @@ PCOL_API PcolError pcol_transport_bind(PcolTransport* t, PcolEndpoint ep);
 /* Destroy a transport. */
 PCOL_API void pcol_transport_destroy(PcolTransport* t);
 
+/* --- External transport (for WASM/browser bridging) --- */
+
+/* Create an external transport. JavaScript feeds packets in via
+ * pcol_transport_external_push_recv() and drains outbound packets
+ * via pcol_transport_external_pop_send(). */
+PCOL_API PcolTransport* pcol_transport_external_create(void);
+
+/* Push a received packet into the external transport's recv queue.
+ * Called from JS when data arrives on WebSocket/WebTransport. */
+PCOL_API PcolError pcol_transport_external_push_recv(
+    PcolTransport* t, const uint8_t* data, size_t len,
+    const char* from_addr, uint16_t from_port);
+
+/* Pop a sent packet from the external transport's send queue.
+ * buf/buf_len: caller-provided buffer for packet data.
+ * out_len: receives actual packet length.
+ * to_addr_buf/to_addr_buf_len: receives destination address string.
+ * to_port: receives destination port.
+ * Returns PCOL_OK if a packet was available, PCOL_ERR_NOT_FOUND if empty. */
+PCOL_API PcolError pcol_transport_external_pop_send(
+    PcolTransport* t, uint8_t* buf, size_t buf_len, size_t* out_len,
+    char* to_addr_buf, size_t to_addr_buf_len, uint16_t* to_port);
+
+/* Number of packets waiting in the send queue. */
+PCOL_API size_t pcol_transport_external_send_queue_size(PcolTransport* t);
+
 /* --- DTLS transport (optional, requires PROTOCOLL_ENABLE_DTLS) --- */
 
 /* DTLS configuration for encrypted transport. */
@@ -165,6 +191,23 @@ PCOL_API int pcol_peer_is_connected(const PcolPeer* peer);
 PCOL_API void pcol_peer_disconnect(PcolPeer* peer);
 
 PCOL_API void pcol_peer_set_local_endpoint(PcolPeer* peer, PcolEndpoint ep);
+
+/* --- Non-blocking connection (for WASM/browser) --- */
+
+/* Start connection handshake (sends CONNECT, returns immediately).
+ * Call pcol_peer_connect_poll() repeatedly to check for completion. */
+PCOL_API PcolError pcol_peer_connect_start(PcolPeer* peer, PcolEndpoint remote);
+
+/* Poll for connect completion. Returns PCOL_OK if connected,
+ * PCOL_ERR_TIMEOUT if still waiting, PCOL_ERR_INVALID on failure. */
+PCOL_API PcolError pcol_peer_connect_poll(PcolPeer* peer);
+
+/* Start accepting connections (non-blocking).
+ * Call pcol_peer_accept_poll() repeatedly to check for completion. */
+PCOL_API PcolError pcol_peer_accept_start(PcolPeer* peer);
+
+/* Poll for accept completion. Same return codes as connect_poll. */
+PCOL_API PcolError pcol_peer_accept_poll(PcolPeer* peer);
 
 /* --- State declaration --- */
 

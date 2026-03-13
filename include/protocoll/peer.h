@@ -67,6 +67,16 @@ public:
     bool is_connected() const;
     void disconnect(CloseReason reason = CloseReason::NORMAL);
 
+    // --- Non-blocking handshake (for WASM/browser) ---
+    // connect_start: sends CONNECT packet, returns immediately.
+    // connect_poll: checks for ACCEPT (non-blocking). Returns true when connected.
+    bool connect_start(const Endpoint& remote);
+    bool connect_poll();
+    // accept_start: prepares to receive CONNECT.
+    // accept_poll: checks for CONNECT, sends ACCEPT if found. Returns true when connected.
+    bool accept_start();
+    bool accept_poll();
+
     // --- Multi-connection ---
     bool connect_to(uint16_t remote_node_id, const Endpoint& remote);
     bool accept_node(uint16_t remote_node_id, const Endpoint& expected_from,
@@ -133,6 +143,11 @@ private:
     std::unordered_map<uint16_t, DeltaFilter> delta_filters_;
 
     uint8_t recv_buf_[MAX_PACKET_SIZE];
+
+    // Non-blocking handshake state
+    enum class HandshakeState { NONE, CONNECTING, ACCEPTING };
+    HandshakeState hs_state_ = HandshakeState::NONE;
+    Endpoint hs_remote_;
 
     int send_deltas_to(ManagedConnection& mc,
                        const std::vector<StateRegistry::PendingDelta>& deltas);

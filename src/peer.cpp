@@ -81,6 +81,94 @@ void Peer::disconnect(CloseReason reason) {
     }
 }
 
+// --- Non-blocking handshake (for WASM/browser) ---
+
+bool Peer::connect_start(const Endpoint& remote) {
+    auto* mc = conn_mgr_.add(0);
+    if (!mc) {
+        mc = conn_mgr_.get(0);
+        if (!mc) return false;
+    }
+
+    uint16_t cid = conn_mgr_.next_conn_id();
+    if (!mc->conn.initiate(cid, remote)) return false;
+
+    auto pkt = handshake::build_connect_packet(mc->conn);
+    int sent = transport_.send_to(pkt.data(), pkt.size(), remote);
+    if (sent <= 0) return false;
+
+    hs_state_ = HandshakeState::CONNECTING;
+    hs_remote_ = remote;
+    return true;
+}
+
+bool Peer::connect_poll() {
+    if (hs_state_ != HandshakeState::CONNECTING) return false;
+
+    auto* mc = conn_mgr_.get(0);
+    if (!mc) return false;
+
+    // Already connected (previous poll succeeded)?
+    if (mc->conn.state() == ConnectionState::CONNECTED) {
+        hs_state_ = HandshakeState::NONE;
+        return true;
+    }
+
+    Endpoint from;
+    int n = transport_.recv_from(recv_buf_, sizeof(recv_buf_), from, 0);
+    if (n <= 0) return false;
+
+    auto event = handshake::process_packet(mc->conn, recv_buf_, static_cast<size_t>(n));
+    if (event.result == handshake::HandshakeResult::ACCEPT_RECEIVED) {
+        hs_state_ = HandshakeState::NONE;
+        return true;
+    }
+    return false;
+}
+
+bool Peer::accept_start() {
+    auto* mc = conn_mgr_.add(0);
+    if (!mc) {
+        mc = conn_mgr_.get(0);
+        if (!mc) return false;
+    }
+
+    hs_state_ = HandshakeState::ACCEPTING;
+    return true;
+}
+
+bool Peer::accept_poll() {
+    if (hs_state_ != HandshakeState::ACCEPTING) return false;
+
+    auto* mc = conn_mgr_.get(0);
+    if (!mc) return false;
+
+    // Already connected?
+    if (mc->conn.state() == ConnectionState::CONNECTED) {
+        hs_state_ = HandshakeState::NONE;
+        return true;
+    }
+
+    Endpoint from;
+    int n = transport_.recv_from(recv_buf_, sizeof(recv_buf_), from, 0);
+    if (n <= 0) return false;
+
+    auto event = handshake::process_packet(mc->conn, recv_buf_, static_cast<size_t>(n));
+    if (event.result != handshake::HandshakeResult::CONNECT_RECEIVED) return false;
+
+    uint16_t cid = conn_mgr_.next_conn_id();
+    mc->conn.accept(cid, 0, from);
+
+    auto pkt = handshake::build_accept_packet(mc->conn);
+    transport_.send_to(pkt.data(), pkt.size(), from);
+
+    if (mc->conn.state() == ConnectionState::CONNECTED) {
+        hs_state_ = HandshakeState::NONE;
+        return true;
+    }
+    return false;
+}
+
 // --- Multi-connection API ---
 
 bool Peer::connect_to(uint16_t remote_node_id, const Endpoint& remote) {

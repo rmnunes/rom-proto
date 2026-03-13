@@ -74,6 +74,7 @@ set(ROM_CORE_SOURCES
     src/wire/frame.cpp
     src/wire/codec.cpp
     src/transport/loopback_transport.cpp
+    src/transport/external_transport.cpp
     src/connection/connection.cpp
     src/connection/handshake.cpp
     src/reliability/ack_tracker.cpp
@@ -208,6 +209,8 @@ if(NOT EMSCRIPTEN)
         tests/test_connection_manager.cpp
         tests/test_peer_multi_conn.cpp
         tests/test_mesh_topology.cpp
+        tests/test_external_transport.cpp
+        tests/test_async_handshake.cpp
         tests/test_integration.cpp
         tests/test_main.cpp
     )
