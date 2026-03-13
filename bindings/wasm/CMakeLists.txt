@@ -30,5 +30,6 @@ if(EMSCRIPTEN)
         "SHELL:-s INITIAL_MEMORY=16777216"
         # Single-threaded WASM (no pthread)
         "SHELL:-s ENVIRONMENT='web,node'"
+        "SHELL:-s EXPORT_ES6=1"
     )
 endif()
