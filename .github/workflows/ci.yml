@@ -218,8 +218,9 @@ jobs:
         run: |
           emcmake cmake -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build --config Release
-          cp build/rom_wasm.js dist/ 2>/dev/null || true
-          cp build/rom_wasm.wasm dist/ 2>/dev/null || true
+          mkdir -p wasm
+          cp build/protocoll_wasm.js wasm/
+          cp build/protocoll_wasm.wasm wasm/
           npm install
           npx tsc
           npm publish

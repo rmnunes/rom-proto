@@ -474,7 +474,7 @@ export class Protocoll {
 export async function initProtocoll(): Promise<Protocoll> {
   // Dynamic import of the Emscripten-generated module
   // Users must place protocoll_wasm.js and protocoll_wasm.wasm in the right location
-  const createModule = (await import('./protocoll_wasm.js' as string)).default;
+  const createModule = (await import('../wasm/protocoll_wasm.js' as string)).default;
   const mod = await createModule() as ProtocollModule;
   return new Protocoll(mod);
 }
