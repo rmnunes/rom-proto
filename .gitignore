@@ -49,6 +49,13 @@ bindings/wasm/*.wasm
 Thumbs.db
 Desktop.ini
 
+# .NET
+bindings/dotnet/**/bin/
+bindings/dotnet/**/obj/
+
+# Build artifacts (shared lib builds)
+build_shared/
+
 # Package managers
 *.lock
 !bindings/wasm/package-lock.json

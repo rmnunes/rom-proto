@@ -129,6 +129,12 @@ target_include_directories(rom PUBLIC
 target_compile_features(rom PUBLIC cxx_std_20)
 protocoll_set_warnings(rom)
 
+# When building as a shared library, export C API symbols and use "protocoll" as the output name
+if(BUILD_SHARED_LIBS)
+    target_compile_definitions(rom PRIVATE PROTOCOLL_BUILDING_DLL)
+    set_target_properties(rom PROPERTIES OUTPUT_NAME protocoll)
+endif()
+
 target_link_libraries(rom PUBLIC monocypher_lib)
 
 if(PROTOCOLL_ENABLE_DTLS)

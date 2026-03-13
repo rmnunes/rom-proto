@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RMNunes.Rom/RMNunes.Rom.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RMNunes.Rom.Tests/RMNunes.Rom.Tests.csproj" />
+  </Folder>
+</Solution>

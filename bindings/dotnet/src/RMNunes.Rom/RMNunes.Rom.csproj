@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>RMNunes.Rom</PackageId>
+    <Version>1.0.2</Version>
+    <Description>ROM SDK — Replicated Object Memory for .NET. Stream CRDT state across peers with adaptive routing and multi-resolution propagation.</Description>
+    <Authors>rmnunes</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/rmnunes/rom-proto</RepositoryUrl>
+    <PackageTags>crdt;state-replication;mesh-networking;peer-to-peer;real-time</PackageTags>
+  </PropertyGroup>
+</Project>

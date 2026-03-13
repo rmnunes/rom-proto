@@ -45,4 +45,18 @@ updateToml('bindings/rust/protocoll/Cargo.toml');
 // ── Python (pyproject.toml) ─────────────────────────────────
 updateToml('bindings/python/pyproject.toml');
 
+// ── .NET (csproj) ──────────────────────────────────────────
+function updateCsproj(filePath) {
+  const abs = resolve(filePath);
+  let content = readFileSync(abs, 'utf8');
+  content = content.replace(
+    /<Version>[^<]*<\/Version>/,
+    `<Version>${version}</Version>`
+  );
+  writeFileSync(abs, content);
+  console.log(`  updated ${filePath}`);
+}
+
+updateCsproj('bindings/dotnet/src/RMNunes.Rom/RMNunes.Rom.csproj');
+
 console.log('Done.');
