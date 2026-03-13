@@ -12,4 +12,8 @@
     <RepositoryUrl>https://github.com/rmnunes/rom-proto</RepositoryUrl>
     <PackageTags>crdt;state-replication;mesh-networking;peer-to-peer;real-time</PackageTags>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="runtimes/**/*" Pack="true" PackagePath="runtimes" />
+  </ItemGroup>
 </Project>
