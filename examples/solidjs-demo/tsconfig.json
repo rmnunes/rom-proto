@@ -7,9 +7,6 @@
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "noEmit": true,
-    "isolatedModules": true,
-    "paths": {
-      "@rmnunes/rom": ["../../bindings/wasm/src/index.ts"]
-    }
+    "isolatedModules": true
   }
 }

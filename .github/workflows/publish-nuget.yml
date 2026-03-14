@@ -1,0 +1,89 @@
+name: Publish NuGet
+
+on:
+  release:
+    types: [published]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # ── Build native shared libraries across platforms ────────
+  native-libs:
+    name: Native (${{ matrix.rid }})
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            lib: libprotocoll.so
+            cmake_args: -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+          - os: windows-latest
+            rid: win-x64
+            lib: Release/protocoll.dll
+            cmake_args: ""
+          - os: macos-latest
+            rid: osx-arm64
+            lib: libprotocoll.dylib
+            cmake_args: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Build shared library
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON ${{ matrix.cmake_args }}
+          cmake --build build --config Release --target rom --parallel
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: native-${{ matrix.rid }}
+          path: build/${{ matrix.lib }}
+
+  # ── Pack + publish NuGet ─────────────────────────────────
+  publish:
+    name: Pack & Publish NuGet
+    runs-on: ubuntu-latest
+    needs: native-libs
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Download native artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: native-*
+          path: native-artifacts
+
+      - name: Prepare runtimes
+        working-directory: bindings/dotnet/src/RMNunes.Rom
+        run: |
+          mkdir -p runtimes/linux-x64/native runtimes/win-x64/native runtimes/osx-arm64/native
+          cp $GITHUB_WORKSPACE/native-artifacts/native-linux-x64/libprotocoll.so runtimes/linux-x64/native/
+          cp $GITHUB_WORKSPACE/native-artifacts/native-win-x64/protocoll.dll runtimes/win-x64/native/
+          cp $GITHUB_WORKSPACE/native-artifacts/native-osx-arm64/libprotocoll.dylib runtimes/osx-arm64/native/
+
+      - name: Pack & Publish
+        working-directory: bindings/dotnet
+        run: |
+          dotnet pack src/RMNunes.Rom -c Release -o nupkgs
+          dotnet nuget push nupkgs/*.nupkg --source "https://nuget.pkg.github.com/rmnunes/index.json" --api-key ${{ secrets.GITHUB_TOKEN }}
+          cp nupkgs/*.nupkg $GITHUB_WORKSPACE/rom-dotnet-${{ github.event.release.tag_name }}.nupkg
+
+      - name: Upload NuGet to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: rom-dotnet-${{ github.event.release.tag_name }}.nupkg

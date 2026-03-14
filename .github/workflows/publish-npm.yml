@@ -1,0 +1,50 @@
+name: Publish npm
+
+on:
+  release:
+    types: [published]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Build WASM & Publish npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@rmnunes"
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: "3.1.51"
+
+      - name: Build WASM
+        working-directory: bindings/wasm
+        run: |
+          emcmake cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+          mkdir -p wasm
+          cp build/protocoll_wasm.js wasm/
+          cp build/protocoll_wasm.wasm wasm/
+
+      - name: Build TypeScript & Publish
+        working-directory: bindings/wasm
+        run: |
+          npm install
+          npx tsc
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

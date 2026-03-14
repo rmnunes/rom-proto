@@ -1,0 +1,7 @@
+[package]
+name = "rom-rust-demo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rmnunes-rom = "1.2.5"

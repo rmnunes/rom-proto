@@ -1,0 +1,53 @@
+name: Publish Python
+
+on:
+  release:
+    types: [published]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Build sdist & Upload
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Build C++ library
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+          cmake --build build --config Release --parallel
+          cmake --install build --prefix staging/rom
+
+      - name: Package C++ tarball
+        run: tar czf rom-${{ github.event.release.tag_name }}-linux-x64.tar.gz -C staging rom
+
+      - name: Build Python sdist
+        run: |
+          pip install build cffi
+          cd bindings/python && python -m build --sdist
+          cp dist/*.tar.gz ../../rom-python-${{ github.event.release.tag_name }}.tar.gz
+
+      - name: Generate checksums
+        run: |
+          sha256sum rom-${{ github.event.release.tag_name }}-linux-x64.tar.gz \
+                    rom-python-${{ github.event.release.tag_name }}.tar.gz > checksums.txt
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            rom-${{ github.event.release.tag_name }}-linux-x64.tar.gz
+            rom-python-${{ github.event.release.tag_name }}.tar.gz
+            checksums.txt

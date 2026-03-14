@@ -1,10 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -14,10 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
-  packages: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 jobs:
   # ── Build + test C++ ──────────────────────────────────────
@@ -92,165 +88,3 @@ jobs:
           dotnet test -c Release --logger "console;verbosity=normal"
         env:
           PROTOCOLL_LIB_PATH: ${{ github.workspace }}/build/libprotocoll.so
-
-  # ── Release + publish (main only) ─────────────────────────
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    needs: [cpp, typescript, dotnet]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    outputs:
-      new_release: ${{ steps.semantic.outputs.new_release_published }}
-      version: ${{ steps.semantic.outputs.new_release_version }}
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "24"
-
-      - name: Semantic Release
-        id: semantic
-        uses: cycjimmy/semantic-release-action@v5
-        with:
-          extra_plugins: |
-            @semantic-release/exec
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # ── Build native shared libraries for NuGet ───────────────
-  native-libs:
-    name: Native (${{ matrix.rid }})
-    needs: release
-    if: needs.release.outputs.new_release == 'true'
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            rid: linux-x64
-            lib: libprotocoll.so
-            cmake_args: -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-          - os: windows-latest
-            rid: win-x64
-            lib: Release/protocoll.dll
-            cmake_args: ""
-          - os: macos-latest
-            rid: osx-arm64
-            lib: libprotocoll.dylib
-            cmake_args: ""
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: v${{ needs.release.outputs.version }}
-
-      - name: Build shared library
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON ${{ matrix.cmake_args }}
-          cmake --build build --config Release --target rom --parallel
-
-      - name: Upload native artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: native-${{ matrix.rid }}
-          path: build/${{ matrix.lib }}
-
-  # ── Publish npm + upload artifacts ────────────────────────
-  publish:
-    name: Publish
-    runs-on: ubuntu-latest
-    needs: [release, native-libs]
-    if: needs.release.outputs.new_release == 'true'
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: v${{ needs.release.outputs.version }}
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "24"
-          registry-url: "https://npm.pkg.github.com"
-          scope: "@rmnunes"
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Build C++ library
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-          cmake --build build --config Release --parallel
-          cmake --install build --prefix staging/rom
-
-      - name: Package C++ tarball
-        run: tar czf rom-v${{ needs.release.outputs.version }}-linux-x64.tar.gz -C staging rom
-
-      - name: Build Python sdist
-        run: |
-          pip install build cffi
-          cd bindings/python && python -m build --sdist
-          cp dist/*.tar.gz ../../rom-python-v${{ needs.release.outputs.version }}.tar.gz
-
-      - name: Generate checksums
-        run: |
-          sha256sum rom-v${{ needs.release.outputs.version }}-linux-x64.tar.gz \
-                    rom-python-v${{ needs.release.outputs.version }}.tar.gz > checksums.txt
-
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ needs.release.outputs.version }}
-          files: |
-            rom-v${{ needs.release.outputs.version }}-linux-x64.tar.gz
-            rom-python-v${{ needs.release.outputs.version }}.tar.gz
-            checksums.txt
-
-      - name: Setup Emscripten
-        uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: "3.1.51"
-
-      - name: Build WASM + publish npm
-        working-directory: bindings/wasm
-        run: |
-          emcmake cmake -B build -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release
-          mkdir -p wasm
-          cp build/protocoll_wasm.js wasm/
-          cp build/protocoll_wasm.wasm wasm/
-          npm install
-          npx tsc
-          npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: "8.0.x"
-
-      - name: Download native artifacts
-        uses: actions/download-artifact@v5
-        with:
-          pattern: native-*
-          path: native-artifacts
-
-      - name: Prepare NuGet runtimes
-        working-directory: bindings/dotnet/src/RMNunes.Rom
-        run: |
-          mkdir -p runtimes/linux-x64/native runtimes/win-x64/native runtimes/osx-arm64/native
-          cp $GITHUB_WORKSPACE/native-artifacts/native-linux-x64/libprotocoll.so runtimes/linux-x64/native/
-          cp $GITHUB_WORKSPACE/native-artifacts/native-win-x64/protocoll.dll runtimes/win-x64/native/
-          cp $GITHUB_WORKSPACE/native-artifacts/native-osx-arm64/libprotocoll.dylib runtimes/osx-arm64/native/
-
-      - name: Pack + publish NuGet
-        working-directory: bindings/dotnet
-        run: |
-          dotnet pack src/RMNunes.Rom -c Release -o nupkgs
-          dotnet nuget push nupkgs/*.nupkg --source "https://nuget.pkg.github.com/rmnunes/index.json" --api-key ${{ secrets.GITHUB_TOKEN }}
-          cp nupkgs/*.nupkg ../../rom-dotnet-v${{ needs.release.outputs.version }}.nupkg
-
-      - name: Upload NuGet to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ needs.release.outputs.version }}
-          files: rom-dotnet-v${{ needs.release.outputs.version }}.nupkg
