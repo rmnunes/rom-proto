@@ -41,12 +41,6 @@ extern "C" {
     }
 
     EMSCRIPTEN_KEEPALIVE
-    PcolError pcol_peer_accept_start_flat(PcolPeer* peer, const char* addr, uint16_t port, int timeout_ms) {
-        PcolEndpoint ep = {addr, port};
-        return pcol_peer_accept_start(peer, ep, timeout_ms);
-    }
-
-    EMSCRIPTEN_KEEPALIVE
     PcolError pcol_peer_accept_flat(PcolPeer* peer, const char* addr, uint16_t port, int timeout_ms) {
         PcolEndpoint ep = {addr, port};
         return pcol_peer_accept(peer, ep, timeout_ms);
