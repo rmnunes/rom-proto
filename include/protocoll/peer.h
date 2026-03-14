@@ -149,6 +149,10 @@ private:
     HandshakeState hs_state_ = HandshakeState::NONE;
     Endpoint hs_remote_;
 
+    // Auto-accept: when poll() receives a CONNECT from an unknown endpoint,
+    // automatically create a new connection slot and send ACCEPT.
+    uint16_t next_auto_node_id_ = 1000;
+
     int send_deltas_to(ManagedConnection& mc,
                        const std::vector<StateRegistry::PendingDelta>& deltas);
     int process_data_frames(ManagedConnection& mc, PacketDecoder& dec);

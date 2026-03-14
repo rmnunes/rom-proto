@@ -456,6 +456,29 @@ int Peer::poll(int timeout_ms) {
         }
     });
 
+    // Auto-accept: CONNECT from an unknown endpoint → create new connection
+    if (!mc && dec.header().packet_type == PacketType::HANDSHAKE) {
+        uint16_t auto_id = next_auto_node_id_++;
+        auto* new_mc = conn_mgr_.add(auto_id);
+        if (new_mc) {
+            auto event = handshake::process_packet(new_mc->conn, recv_buf_, static_cast<size_t>(n));
+            if (event.result == handshake::HandshakeResult::CONNECT_RECEIVED) {
+                uint16_t cid = conn_mgr_.next_conn_id();
+                new_mc->conn.accept(cid, 0, from);
+                auto pkt = handshake::build_accept_packet(new_mc->conn);
+                transport_.send_to(pkt.data(), pkt.size(), from);
+            } else if (event.result == handshake::HandshakeResult::PING_RECEIVED) {
+                // Not a real new connection, just a ping — clean up
+                conn_mgr_.remove(auto_id);
+                next_auto_node_id_--;
+            } else {
+                conn_mgr_.remove(auto_id);
+                next_auto_node_id_--;
+            }
+        }
+        return 0;
+    }
+
     // Fallback: use primary if no match by endpoint
     if (!mc) mc = conn_mgr_.primary();
     if (!mc) return 0;
