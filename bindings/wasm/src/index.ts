@@ -64,8 +64,8 @@ export class Transport {
   /** Bind to a local address and port. */
   bind(address: string, port: number): void {
     const addrPtr = this._mod.allocateUTF8(address);
-    // PcolEndpoint is passed as address ptr + port
-    const code = this._mod._pcol_transport_bind(this._ptr, addrPtr, port);
+    // Use flat wrapper to avoid struct-by-value ABI issues in Emscripten
+    const code = this._mod._pcol_transport_bind_flat(this._ptr, addrPtr, port);
     this._mod._free(addrPtr);
     checkError(code);
   }
@@ -118,14 +118,14 @@ export class Peer {
   /** Set the local endpoint. */
   setLocalEndpoint(address: string, port: number): void {
     const addrPtr = this._mod.allocateUTF8(address);
-    this._mod._pcol_peer_set_local_endpoint(this._ptr, addrPtr, port);
+    this._mod._pcol_peer_set_local_endpoint_flat(this._ptr, addrPtr, port);
     this._mod._free(addrPtr);
   }
 
   /** Connect to a remote peer. */
   connect(address: string, port: number): void {
     const addrPtr = this._mod.allocateUTF8(address);
-    const code = this._mod._pcol_peer_connect(this._ptr, addrPtr, port);
+    const code = this._mod._pcol_peer_connect_flat(this._ptr, addrPtr, port);
     this._mod._free(addrPtr);
     checkError(code);
   }
@@ -133,7 +133,7 @@ export class Peer {
   /** Accept a connection from a remote peer. */
   accept(address: string, port: number, timeoutMs = 5000): void {
     const addrPtr = this._mod.allocateUTF8(address);
-    const code = this._mod._pcol_peer_accept(this._ptr, addrPtr, port, timeoutMs);
+    const code = this._mod._pcol_peer_accept_flat(this._ptr, addrPtr, port, timeoutMs);
     this._mod._free(addrPtr);
     checkError(code);
   }
@@ -153,7 +153,7 @@ export class Peer {
   /** Start a connection handshake (non-blocking). Use with connectPoll() or connectAsync(). */
   connectStart(address: string, port: number): void {
     const addrPtr = this._mod.allocateUTF8(address);
-    const code = this._mod._pcol_peer_connect_start(this._ptr, addrPtr, port);
+    const code = this._mod._pcol_peer_connect_start_flat(this._ptr, addrPtr, port);
     this._mod._free(addrPtr);
     checkError(code);
   }
@@ -322,7 +322,7 @@ export class Peer {
   /** Connect to a specific remote node. */
   connectTo(nodeId: number, address: string, port: number): void {
     const addrPtr = this._mod.allocateUTF8(address);
-    const code = this._mod._pcol_peer_connect_to(this._ptr, nodeId, addrPtr, port);
+    const code = this._mod._pcol_peer_connect_to_flat(this._ptr, nodeId, addrPtr, port);
     this._mod._free(addrPtr);
     checkError(code);
   }
@@ -330,7 +330,7 @@ export class Peer {
   /** Accept a connection from a specific remote node. */
   acceptNode(nodeId: number, address: string, port: number, timeoutMs = 5000): void {
     const addrPtr = this._mod.allocateUTF8(address);
-    const code = this._mod._pcol_peer_accept_node(this._ptr, nodeId, addrPtr, port, timeoutMs);
+    const code = this._mod._pcol_peer_accept_node_flat(this._ptr, nodeId, addrPtr, port, timeoutMs);
     this._mod._free(addrPtr);
     checkError(code);
   }
