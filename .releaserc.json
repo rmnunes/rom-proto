@@ -6,16 +6,6 @@
     ["@semantic-release/exec", {
       "prepareCmd": "node scripts/sync-versions.mjs ${nextRelease.version}"
     }],
-    ["@semantic-release/git", {
-      "assets": [
-        "bindings/wasm/package.json",
-        "bindings/rust/protocoll-sys/Cargo.toml",
-        "bindings/rust/protocoll/Cargo.toml",
-        "bindings/python/pyproject.toml",
-        "bindings/dotnet/src/RMNunes.Rom/RMNunes.Rom.csproj"
-      ],
-      "message": "chore(release): ${nextRelease.version}\n\n${nextRelease.notes}"
-    }],
     ["@semantic-release/github", {
       "assets": []
     }]

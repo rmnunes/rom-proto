@@ -104,8 +104,6 @@ jobs:
       version: ${{ steps.semantic.outputs.new_release_version }}
     steps:
       - uses: actions/checkout@v5
-        with:
-          persist-credentials: false
 
       - uses: actions/setup-node@v5
         with:
@@ -117,7 +115,6 @@ jobs:
         with:
           extra_plugins: |
             @semantic-release/exec
-            @semantic-release/git
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
