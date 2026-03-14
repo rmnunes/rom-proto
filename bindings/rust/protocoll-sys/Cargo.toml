@@ -1,6 +1,6 @@
 [package]
 name = "rmnunes-rom-sys"
-version = "1.2.4"
+version = "1.2.5"
 edition = "2021"
 description = "Raw FFI bindings for the ROM (Replicated Object Memory) C library"
 license = "MIT"
