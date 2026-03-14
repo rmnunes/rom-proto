@@ -1,8 +1,11 @@
 name: Publish NuGet
 
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -12,7 +15,6 @@ permissions:
   packages: write
 
 jobs:
-  # ── Build native shared libraries across platforms ────────
   native-libs:
     name: Native (${{ matrix.rid }})
     strategy:
@@ -34,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: v${{ inputs.version }}
 
       - name: Build shared library
         run: |
@@ -47,7 +49,6 @@ jobs:
           name: native-${{ matrix.rid }}
           path: build/${{ matrix.lib }}
 
-  # ── Pack + publish NuGet ─────────────────────────────────
   publish:
     name: Pack & Publish NuGet
     runs-on: ubuntu-latest
@@ -55,7 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: v${{ inputs.version }}
 
       - uses: actions/setup-dotnet@v5
         with:
@@ -80,10 +81,10 @@ jobs:
         run: |
           dotnet pack src/RMNunes.Rom -c Release -o nupkgs
           dotnet nuget push nupkgs/*.nupkg --source "https://nuget.pkg.github.com/rmnunes/index.json" --api-key ${{ secrets.GITHUB_TOKEN }}
-          cp nupkgs/*.nupkg $GITHUB_WORKSPACE/rom-dotnet-${{ github.event.release.tag_name }}.nupkg
+          cp nupkgs/*.nupkg $GITHUB_WORKSPACE/rom-dotnet-v${{ inputs.version }}.nupkg
 
       - name: Upload NuGet to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: rom-dotnet-${{ github.event.release.tag_name }}.nupkg
+          tag_name: v${{ inputs.version }}
+          files: rom-dotnet-v${{ inputs.version }}.nupkg

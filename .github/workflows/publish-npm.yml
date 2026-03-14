@@ -1,8 +1,11 @@
 name: Publish npm
 
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -18,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: v${{ inputs.version }}
 
       - uses: actions/setup-node@v5
         with:

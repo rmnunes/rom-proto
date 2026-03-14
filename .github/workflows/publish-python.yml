@@ -1,8 +1,11 @@
 name: Publish Python
 
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -17,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: v${{ inputs.version }}
 
       - uses: actions/setup-python@v6
         with:
@@ -30,24 +33,24 @@ jobs:
           cmake --install build --prefix staging/rom
 
       - name: Package C++ tarball
-        run: tar czf rom-${{ github.event.release.tag_name }}-linux-x64.tar.gz -C staging rom
+        run: tar czf rom-v${{ inputs.version }}-linux-x64.tar.gz -C staging rom
 
       - name: Build Python sdist
         run: |
           pip install build cffi
           cd bindings/python && python -m build --sdist
-          cp dist/*.tar.gz ../../rom-python-${{ github.event.release.tag_name }}.tar.gz
+          cp dist/*.tar.gz ../../rom-python-v${{ inputs.version }}.tar.gz
 
       - name: Generate checksums
         run: |
-          sha256sum rom-${{ github.event.release.tag_name }}-linux-x64.tar.gz \
-                    rom-python-${{ github.event.release.tag_name }}.tar.gz > checksums.txt
+          sha256sum rom-v${{ inputs.version }}-linux-x64.tar.gz \
+                    rom-python-v${{ inputs.version }}.tar.gz > checksums.txt
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: v${{ inputs.version }}
           files: |
-            rom-${{ github.event.release.tag_name }}-linux-x64.tar.gz
-            rom-python-${{ github.event.release.tag_name }}.tar.gz
+            rom-v${{ inputs.version }}-linux-x64.tar.gz
+            rom-python-v${{ inputs.version }}.tar.gz
             checksums.txt
